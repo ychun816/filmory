@@ -73,7 +73,6 @@ A movie index and insight sharing website
 | Monitoring | Prometheus + Grafana + Alertmanager | Metrics, dashboards, scraper-failure alerts |
 | Logging | Loki + Promtail | Searchable logs — why, not just that, something broke |
 | IaC (cloud phase only) | Terraform, optionally Ansible | Provisions EKS/EC2/RDS/S3 if/when moving to AWS |
-| Unclear | Merlin | Ask Charly — not a widely-known public tool |
 
 
 ## Repo structure

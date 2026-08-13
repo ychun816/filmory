@@ -2,6 +2,24 @@
 
 Full breakdown of the backend stack, owned by Sophia. See the [README](./README.md) for the project overview and the rest of the stack.
 
+## to do 
+
+### Setup Backend
+
+- [ ] Scaffold FastAPI project (routers, models/schemas, Alembic migrations)
+- [ ] Add MySQL container + initial schema: users, movies, ratings, comments, news
+- [ ] Add Redis container, wire session tokens + rate limiting
+- [ ] Implement JWT auth: register, login, refresh
+- [ ] Implement TOTP 2FA: setup + verify endpoints
+- [ ] Build core REST endpoints: movies, ratings, comments, my-list
+- [ ] Add MinIO container, wire poster/thumbnail upload+retrieval
+- [ ] Add NATS container with JetStream enabled
+- [ ] Write `docker-compose.yml` wiring everything together
+- [ ] Smoke-test end to end: register → login → 2FA → rate → comment → add to list
+
+---
+
+
 ## Core
 
 | Category | Technology | Purpose |

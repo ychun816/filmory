@@ -1,0 +1,16 @@
+# filmory — local Kubernetes cluster
+#
+#   kind create cluster --config kind-config.yaml
+#   kind delete cluster --name filmory
+#
+# Three nodes so scheduling, affinity, and node failure behave like a real
+# cluster rather than a single-node toy.
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: filmory
+
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker

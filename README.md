@@ -10,7 +10,7 @@ A movie index and insight sharing website
   - [Infrastructure](#Infrastructure) 
 - [Repo Structure](#Repo-Structure)
 - [Git Branching Strategy](#Git-Branching-Strategy)
-- 
+- [Getting Started](#Getting-Started)
 
 ## Team
 
@@ -27,6 +27,48 @@ A movie index and insight sharing website
 - My Movie List
 - New Releases
 - Journal — deferred, not in scope for phase 1
+
+## Getting Started
+
+Tool versions are pinned in `mise.toml` and install identically on macOS and
+Linux. Docker is a system service and installs separately per OS.
+
+**1 — Install mise**
+
+```bash
+brew install mise            # macOS
+curl https://mise.run | sh   # Linux
+```
+
+**2 — Activate it in your shell.** Without this the tools won't be on your `PATH`:
+
+```bash
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc     # bash: mise activate bash >> ~/.bashrc
+```
+
+Then open a new terminal.
+
+**3 — Install the toolchain**
+
+```bash
+mise install        # kubectl, kind, helm, k9s, stern at the pinned versions
+mise ls --current   # verify
+```
+
+**4 — Install Docker**
+
+- **macOS** — Docker Desktop from [docker.com](https://docker.com), or
+  `brew install --cask docker-desktop` on a machine that doesn't have it yet.
+  Homebrew can't adopt a Docker Desktop installed by hand; macOS App Management
+  protection blocks it. If you already have Docker, leave it alone.
+- **Linux** — Docker Engine + compose plugin from your distro's repo (not Docker
+  Desktop), then `sudo usermod -aG docker "$USER"` and log back in so kind can
+  run without sudo. Note that this grants root-equivalent access.
+
+To change a pinned version: `mise use kubectl@1.35.0` rewrites `mise.toml` —
+commit it, and everyone else picks it up with `mise install`.
+
+What each phase actually needs is tracked in [INFRA.md](INFRA.md).
 
 ## Tech Stack
 

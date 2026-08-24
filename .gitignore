@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Kubernetes / Helm
+kubeconfig
+*.tgz
+charts/*/charts/
+
+# Editors
+.idea/

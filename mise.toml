@@ -1,0 +1,18 @@
+# filmory — CLI toolchain, macOS + Linux
+#
+#   mise install              install every tool below at the pinned version
+#   mise ls --current         show what is active
+#   mise use kubectl@1.36.4   change a pin and rewrite this file
+#
+# Versions are pinned deliberately. kubectl must stay within one minor version
+# of the cluster, and everyone should be running the same kind.
+#
+# Docker is NOT here — it's a system service, not a CLI binary, and installs
+# differently per OS. See the README.
+
+[tools]
+kubectl = "1.36.4"   # keep within one minor of the cluster kind creates
+kind    = "0.32.0"   # local k8s cluster in Docker
+helm    = "4.2.4"    # chart packaging / install
+k9s     = "0.51.0"   # cluster TUI
+stern   = "1.34.0"   # multi-pod log tailing

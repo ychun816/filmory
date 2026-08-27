@@ -40,32 +40,53 @@ Verify the cluster is up *before* opening the PR.
       pin in `mise.toml`. This is exactly what pinning exists to make visible.
 - [ ] PR → merge
 
-### Phase 2 — The payload · `feat/backend-health`
+### Phase 2 — The payload · `feat/backend-health` ✅
 
 Twenty lines of Python. Empty infrastructure cannot be tested — Helm charts that
 deploy nothing and CI that builds nothing can't be told apart from broken ones.
 This service stays in the repo forever as the liveness probe target.
 
-- [ ] FastAPI app with a single `GET /health` → `{"ok": true}`
-- [ ] `requirements.txt` / dependency pinning
-- [ ] Runs locally: `uvicorn main:app`
+- [x] FastAPI app with a single `GET /health` → `{"ok": true}` (`backend/main.py`)
+- [x] `requirements.txt` pinned from what actually resolved (fastapi 0.141.1,
+      uvicorn 0.52.4)
 
-### Phase 3 — Containerize · `infra/dockerfiles`
+### Phase 3 — Containerize · `infra/dockerfiles` ✅
 
-- [ ] Dockerfile for the backend service (multi-stage, non-root user)
-- [ ] `.dockerignore`
-- [ ] Verify: `docker build` + `docker run` → `/health` responds
-- [ ] `kind load docker-image` → image available in-cluster
+- [x] Multi-stage Dockerfile, non-root user
+- [x] `.dockerignore`
+- [x] `docker build` → `filmory-backend:0.1.1`
+- [x] `kind load docker-image` → present on all three nodes
 
-### Phase 4 — Deploy · `infra/helm-charts`
+**Learned the hard way:** `USER app` (a name) fails under `runAsNonRoot: true` —
+the kubelet can't verify a non-numeric user is non-root and refuses to start the
+container. Use `USER 10001`.
 
-Reach it with `kubectl port-forward` for now. Needing MetalLB is a later
-annoyance — that annoyance is the signal to add it, not a reason to add it yet.
+### Phase 4a — Deploy with raw manifests ✅
 
-- [ ] Helm chart for the backend (Deployment, Service, values.yaml)
-- [ ] Liveness/readiness probes pointing at `/health`
-- [ ] `helm install` → pod Running
-- [ ] Verify: `kubectl port-forward` → `/health` responds from the browser
+Raw YAML before Helm, deliberately: Helm is a templating engine over exactly
+these objects, and learning both at once means understanding neither.
+
+- [x] `k8s/namespace.yaml`, `k8s/deployment.yaml`, `k8s/service.yaml`
+- [x] Liveness + readiness probes on `/health`
+- [x] securityContext: non-root, no privilege escalation, read-only rootfs,
+      all capabilities dropped
+- [x] resources requests + limits
+- [x] `kubectl apply -f k8s/` → 2 Pods Running, one per worker
+- [x] Verified: `kubectl port-forward` → `{"ok":true}`, HTTP 200
+
+**Learned the hard way:** `kubectl apply -f <dir>` processes files
+alphabetically, so `deployment.yaml` is attempted before `namespace.yaml`.
+Re-running fixes it; ArgoCD solves it properly with sync waves.
+
+### Phase 4b — Deploy with Helm · `infra/helm-charts`
+
+Same objects, now templated so dev/staging/prod differ by values rather than by
+copied YAML.
+
+- [ ] `helm create` and strip the scaffolding down to what we actually use
+- [ ] Move image tag, replica count, and resources into `values.yaml`
+- [ ] `helm install` → same two Pods, same `/health` response
+- [ ] Verify: `helm uninstall` removes everything cleanly
 
 ### Phase 5 — GitOps bootstrap · `infra/argocd-bootstrap`
 

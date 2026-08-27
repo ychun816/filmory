@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment          # manages ReplicaSets, which manage Pods
+metadata:
+  name: backend
+  namespace: filmory
+spec:
+  replicas: 2             # two Pods, so you can watch them land on different nodes
+  selector:
+    matchLabels:
+      app: backend        # MUST match template.metadata.labels below — this is
+                          # how the Deployment finds the Pods it owns
+  template:               # everything below here describes ONE Pod
+    metadata:
+      labels:
+        app: backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          image: filmory-backend:0.1.1
+          # IfNotPresent is essential with `kind load`: the image exists on the
+          # node but NOT in any registry. Always would try to pull and fail.
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # Probes are why /health exists. Kubernetes calls it constantly.
+          livenessProbe:        # failing = restart the container
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:       # failing = pull the Pod out of the Service
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            requests:           # what the scheduler reserves
+              cpu: 50m
+              memory: 64Mi
+            limits:             # what the kernel enforces
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp   # needed because the root filesystem is read-only
+      volumes:
+        - name: tmp
+          emptyDir: {}

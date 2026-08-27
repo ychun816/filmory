@@ -110,6 +110,7 @@ What each phase actually needs is tracked in [INFRA.md](INFRA.md).
 | Secrets | Vault + Vault Secrets Operator | DB creds, JWT/2FA keys, scraper API keys |
 | Event-driven autoscaling | KEDA | Scales the news consumer 0→N off event backlog |
 | GitOps / CD | ArgoCD | Syncs the config repo into the cluster |
+| Packaging | Helm | Chart per service; also how every third-party component installs |
 | Config templating | Kustomize | Dev/staging/prod overlays |
 | CI | GitHub Actions | Build, test, push image, bump manifest tag |
 | Monitoring | Prometheus + Grafana + Alertmanager | Metrics, dashboards, scraper-failure alerts |

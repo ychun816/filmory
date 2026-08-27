@@ -10,6 +10,12 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: filmory
 
+# When Cilium arrives (Phase 7), uncomment this and RECREATE the cluster.
+# kind installs kindnet as a default CNI; two CNIs cannot coexist.
+# networking:
+#   disableDefaultCNI: true    # no CNI until Cilium is installed
+#   kubeProxyMode: none        # Cilium replaces kube-proxy
+
 nodes:
   - role: control-plane
   - role: worker

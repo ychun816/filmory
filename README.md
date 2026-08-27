@@ -1,4 +1,4 @@
-# flimory
+# filmory
 A movie index and insight sharing website
 
 ## index

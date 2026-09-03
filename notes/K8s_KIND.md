@@ -1,12 +1,22 @@
-# kind
+# Kubernetes & kind
 
-Reference for [kind-config.yaml](kind-config.yaml) and the local cluster it
-builds. Phase 1 of [INFRA.md](INFRA.md). Written against the cluster actually
-running here — kind v0.32.0, node image v1.36.1, three nodes.
+Two things in one file, because you meet them together: the **concepts**
+(what a Pod, Service, and Ingress are) and the **local cluster** those concepts
+run on. Phase 1 of [INFRA.md](../INFRA.md), config in
+[kind-config.yaml](../kind-config.yaml).
+
+Written against the cluster actually running here — kind v0.32.0, node image
+v1.36.1, three nodes.
 
 ## index
 
+**Kubernetes**
+- [Orientation](#orientation)
+
+**kind**
 - [What kind is](#what-kind-is)
+- [Why kind, and why not Vagrant?](#why-kind-and-why-not-vagrant)
+  - [Machine vs cluster](#machine-vs-cluster)
 - [The nodes are Docker containers](#the-nodes-are-docker-containers)
 - [kind-config.yaml](#kind-configyaml)
   - [Fields we use](#fields-we-use)
@@ -19,25 +29,37 @@ running here — kind v0.32.0, node image v1.36.1, three nodes.
 - [Errors, and what they actually mean](#errors-and-what-they-actually-mean)
 - [The neighbours](#the-neighbours)
 - [Rules for this repo](#rules-for-this-repo)
+- [Resources](#resources)
 
 ---
 
-## kubernetes brief 
-- Kubernetes (and Helm) in 21 Minutes
-https://www.youtube.com/watch?v=RUjcGn2YeVo
+## Orientation
 
-- General Concept/Stucture 
-![alt text](image.png)
+Watch these before the rest of the file makes sense. Twenty minutes total, and
+they cover the vocabulary every section below assumes.
 
-- K8s Practice
-![alt text](image-1.png)
+| Video | Covers |
+|---|---|
+| [Kubernetes (and Helm) in 21 Minutes](https://www.youtube.com/watch?v=RUjcGn2YeVo) | the whole object model, end to end |
+| [Intro to kind](https://www.youtube.com/watch?v=kR0YJfaGhfU) | the local cluster specifically |
 
-- ingress 
-![alt text](image-2.png)
+**The object model** — how Deployment, ReplicaSet, Pod, and Service relate:
 
-- helm
-![alt text](image-3.png)
+![Kubernetes object model: Deployment owns ReplicaSet owns Pods, Service selects Pods by label](image.png)
 
+**In practice** — the same picture with real commands against it:
+
+![Kubernetes in practice: kubectl commands against the object model](image-1.png)
+
+**Ingress** — how traffic gets in from outside the cluster. Note this is the
+layer you are *skipping*: [INFRA.md](../INFRA.md) picks Gateway API instead,
+because Ingress is legacy. Learn the shape here, use the successor there.
+
+![Ingress routing external traffic to Services](image-2.png)
+
+Helm gets its own file — see [HELM.md](HELM.md).
+
+---
 
 ## What kind is
 
@@ -48,7 +70,55 @@ It is not a Kubernetes distribution and not a lightweight variant — the cluste
 it builds is vanilla upstream Kubernetes, installed with `kubeadm`, the same way
 a real cluster is. That is the point: what you learn here transfers.
 
-Compared to the other thing people reach for locally:
+## Why kind, and why not Vagrant?
+
+### Why kind
+
+Five reasons, roughly in order of how much they matter here:
+
+1. **Multi-node in thirty seconds.** This is the big one. A single-node cluster
+   hides scheduling, affinity, `topologySpreadConstraints`, and node failure —
+   every Pod lands in the only place it can. Three nodes made something visible
+   on day one: your two backend Pods landed on two *different* workers, and you
+   could see it in `kubectl get pods -o wide`.
+2. **It is vanilla upstream Kubernetes.** Installed with `kubeadm`, the same
+   way a real cluster is. Not a fork, not a slimmed-down variant. What you learn
+   transfers to EKS or bare metal without an asterisk.
+3. **It is disposable.** `kind delete cluster` then `kind create cluster` is a
+   minute. That changes how you work — you stop nursing a broken cluster and
+   start recreating it, which is the same instinct the whole GitOps plan is
+   built on. If recreating loses something, that something should have been in
+   git.
+4. **No cloud, no cost, no credentials.** You can break it at 2am on a plane.
+5. **It is what Kubernetes' own CI runs on.** The project tests itself with
+   kind, which is about as good a signal as you get that it behaves like the
+   real thing.
+
+### Why not Vagrant
+
+Because they answer different questions. Vagrant provisions **machines**. kind
+provisions a **cluster**.
+
+```mermaid
+flowchart TB
+    subgraph V["Vagrant"]
+        V1["Vagrantfile"] --> V2["3 virtual machines<br/>bare Ubuntu"]
+        V2 --> V3["...now YOU install Kubernetes<br/>kubeadm, certs, CNI, etcd"]
+        V3 --> V4["a cluster<br/>(an hour later, if it worked)"]
+    end
+    subgraph K["kind"]
+        K1["kind-config.yaml"] --> K2["3 Docker containers<br/>kubeadm already run"]
+        K2 --> K3["a cluster<br/>(30 seconds)"]
+    end
+```
+
+Vagrant stops at step two. Everything after it — installing Kubernetes onto
+those machines — is work you would do yourself with kubeadm or Ansible. That is
+a real and worthwhile exercise, but it is a *different* exercise from the one
+Phase 1 is trying to teach, and doing it now would spend a week before you had
+anything to deploy to.
+
+Side by side:
 
 | | Vagrant | kind |
 |---|---|---|
@@ -56,10 +126,94 @@ Compared to the other thing people reach for locally:
 | Purpose | generic — any OS, any use | Kubernetes only |
 | Hands you | bare machines to provision | a working cluster |
 | Boot | minutes | ~30 seconds |
+| Kubernetes | you install it | already installed |
 | Isolation | full VM, own kernel | shares the host kernel |
+| Disk/RAM cost | a full OS per node | a process tree per node |
 
-The last row is the tradeoff, and it comes back at Phase 7 — see
-[What kind cannot do](#what-kind-cannot-do).
+The **isolation** row is the honest tradeoff, and it is the only one where
+Vagrant genuinely wins — see [What kind cannot do](#what-kind-cannot-do).
+
+### Machine vs cluster
+
+The row that carries all the others is *"hands you"*. It is worth being precise
+about what those two words mean, because the whole difference sits there.
+
+| | A machine | A cluster |
+|---|---|---|
+| Is | one computer — CPU, RAM, disk, an OS, an IP | a set of machines behind one API |
+| You talk to | that machine, over SSH | the **API server**, with `kubectl` |
+| You say | "run this process, here" | "I want 2 of these running" — somewhere |
+| Knows about | only itself | every node, every workload, what should exist |
+| If one dies | whatever was on it is gone | the work is rescheduled elsewhere |
+
+A machine runs processes. It has no opinion about other machines and no memory
+of what it was supposed to be doing. Three Vagrant VMs are three strangers on a
+network.
+
+A cluster is what you get when those machines share a **control plane**: a
+recorded desired state (etcd), an API in front of it (kube-apiserver), and
+controllers that continuously drive reality toward it. At that point the
+individual machines stop mattering — they become interchangeable capacity.
+
+### The gap between them
+
+Turning machines into a cluster is not a small step. It is roughly:
+
+```mermaid
+flowchart LR
+    M["3 machines"] --> PKI["generate a CA<br/>and certificates"]
+    PKI --> ETCD["etcd — the datastore"]
+    ETCD --> CP["apiserver · scheduler<br/>controller-manager"]
+    CP --> KUBELET["kubelet joins<br/>each node"]
+    KUBELET --> CNI["a CNI so Pods on different<br/>nodes can reach each other"]
+    CNI --> C["a cluster"]
+```
+
+That is what `kubeadm` automates and what **kind runs for you** inside those
+three containers. Vagrant hands you the box on the left and stops.
+
+### Why this is the whole point
+
+The shift is in what you are allowed to stop caring about.
+
+```
+machine thinking:  "which box should the backend run on?
+                    what if that box reboots?"
+
+cluster thinking:  replicas: 2
+```
+
+Your [k8s/deployment.yaml](../k8s/deployment.yaml) never names a node. It says
+`replicas: 2` and lets the scheduler decide — which is why two Pods landed on
+two different workers without you choosing, and why deleting one brings it back.
+That behaviour is not Docker, and it is not the machines. It is the control
+plane, and it is the entire reason Kubernetes exists.
+
+### When Vagrant would actually be right
+
+Not "never". It is the better tool when:
+
+- **You need a real kernel per node.** Kernel modules, iSCSI for Longhorn, eBPF
+  experiments, anything loading drivers. kind nodes share your laptop's kernel
+  and cannot pretend otherwise.
+- **The provisioning *is* the point.** Testing Ansible playbooks, OS hardening,
+  or `kubeadm` itself. kind skips exactly the part you would be studying.
+- **You need different operating systems**, or nodes that are not Linux.
+- **You want genuine node isolation** for failure testing — `docker stop` is a
+  good approximation, not a real machine dying.
+
+Note that the first and third bullets are why
+[Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way)
+— the stretch goal in [INFRA.md](../INFRA.md) — is a VM exercise, not a kind
+exercise. Different tool for a different lesson, later.
+
+### One caveat on Vagrant itself
+
+It is largely a previous era: usage has been declining for years as containers
+took over local development, and like Terraform it is BUSL-licensed rather than
+open source. If you ever do want VM-based Kubernetes locally, the current
+options are minikube with a VM driver, Lima/Colima, or Talos in VMs — not
+Vagrant. Knowing it exists is enough.
 
 ## The nodes are Docker containers
 
@@ -298,11 +452,10 @@ behaves like the real thing.
 | Ingress on kind | [Ingress](https://kind.sigs.k8s.io/docs/user/ingress/) |
 | LoadBalancer on kind | [cloud-provider-kind](https://github.com/kubernetes-sigs/cloud-provider-kind) |
 | Node images | [kind releases](https://github.com/kubernetes-sigs/kind/releases) |
+| Video — concepts | [Kubernetes (and Helm) in 21 Minutes](https://www.youtube.com/watch?v=RUjcGn2YeVo) |
+| Video — kind | [Getting Started with kind](https://www.youtube.com/watch?v=kR0YJfaGhfU) |
+| Curated list | [resource.md](resource.md) |
 
+- Kind Tutorial: Kubernetes in Docker - Complete Beginner's Guide to Local K8s Clusters
+https://www.youtube.com/watch?v=N4kwKtdcDWA
 
-- Getting Started with KIND Kubernetes - INTRO TO KIND
-https://www.youtube.com/watch?v=kR0YJfaGhfU&t=14s
-![alt text](image.png)
-
-- Kubernetes (and Helm) in 21 Minutes
-https://www.youtube.com/watch?v=RUjcGn2YeVo

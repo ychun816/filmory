@@ -1,11 +1,14 @@
 # Helm
 
-Reference for the chart in [charts/backend](charts/backend). Written while
+Reference for the chart in [charts/backend](../charts/backend). Written while
 building it, so it explains *why* each piece exists rather than restating the
-official docs. Phase 4b of [INFRA.md](INFRA.md).
+official docs. Phase 4b of [INFRA.md](../INFRA.md).
+
+Kubernetes concepts this assumes are in [K8s_KIND.md](K8s_KIND.md).
 
 ## index
 
+- [Orientation](#orientation)
 - [What a chart actually is](#what-a-chart-actually-is)
 - [Chart.yaml](#chartyaml)
 - [templates/ — the only part Kubernetes sees](#templates--the-only-part-kubernetes-sees)
@@ -19,6 +22,17 @@ official docs. Phase 4b of [INFRA.md](INFRA.md).
 - [Commands](#commands)
 - [Errors, and what they actually mean](#errors-and-what-they-actually-mean)
 - [Rules for this repo](#rules-for-this-repo)
+- [Resources](#resources)
+
+---
+
+## Orientation
+
+Where Helm sits: it does not add Kubernetes objects, it *generates* the ones you
+already know. Everything below is templating over Deployment, Service, and
+Namespace.
+
+![Helm packaging Kubernetes manifests into a chart and installing it as a release](image-3.png)
 
 ---
 
@@ -41,15 +55,7 @@ Only `Chart.yaml` is mandatory. A chart with nothing else lints clean and
 deploys nothing — worth trying once, because it makes the split obvious:
 `Chart.yaml` is *metadata* and has no power to create anything.
 
-## Chart.yaml ( demo chart )
-
-- The Chart Template Developer's Guide
-https://helm.sh/docs/chart_template_guide/
-- Template Functions and Pipelines
-https://helm.sh/docs/chart_template_guide/functions_and_pipelines
-- HELM - Charts
-https://helm.sh/docs/topics/charts
-
+## Chart.yaml
 
 ```yaml
 apiVersion: v2          # Helm 3+. v1 is the Helm 2 era — ignore old blog posts.
@@ -284,10 +290,9 @@ Deployment is valid Kubernetes. For that, `helm template | kubeconform -strict`.
 | Topic | Link |
 |---|---|
 | Templating, in order | [Chart Template Guide](https://helm.sh/docs/chart_template_guide/) |
+| Functions and pipelines | [Template Functions and Pipelines](https://helm.sh/docs/chart_template_guide/functions_and_pipelines) |
+| Every Chart.yaml field | [Charts](https://helm.sh/docs/topics/charts) |
 | Conventions | [Chart Best Practices](https://helm.sh/docs/chart_best_practices/) |
-| Every Chart.yaml field | [Charts](https://helm.sh/docs/topics/charts/) |
-| Template functions | [Function list](https://helm.sh/docs/chart_template_guide/function_list/) |
-
-
-- kubernetes-helm-demo
-https://gitlab.com/groups/kubernetes-helm-demo
+| Full function list | [Function list](https://helm.sh/docs/chart_template_guide/function_list/) |
+| Worked example | [kubernetes-helm-demo](https://gitlab.com/groups/kubernetes-helm-demo) |
+| Curated list | [resource.md](resource.md) |

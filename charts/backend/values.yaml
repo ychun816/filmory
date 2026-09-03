@@ -1,0 +1,5 @@
+# Default values for the backend chart.
+# Anything here can be overridden with -f <file> or --set key=value.
+
+# How many Pods the Deployment keeps running.
+replicaCount: 2

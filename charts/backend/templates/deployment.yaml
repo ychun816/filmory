@@ -7,7 +7,7 @@ metadata:
   name: backend
   namespace: filmory
 spec:
-  replicas: 2             # two Pods-> can watch them land on different nodes
+  replicas: {{ .Values.replicaCount }}   # from values.yaml (default 2)
   selector:
     matchLabels:
       app: backend        # MUST match template.metadata.labels below — this is

@@ -17,6 +17,7 @@ v1.36.1, three nodes.
 - [What kind is](#what-kind-is)
 - [Why kind, and why not Vagrant?](#why-kind-and-why-not-vagrant)
   - [Machine vs cluster](#machine-vs-cluster)
+  - [Is a cluster virtual?](#is-a-cluster-virtual)
 - [The nodes are Docker containers](#the-nodes-are-docker-containers)
 - [kind-config.yaml](#kind-configyaml)
   - [Fields we use](#fields-we-use)
@@ -57,7 +58,8 @@ because Ingress is legacy. Learn the shape here, use the successor there.
 
 ![Ingress routing external traffic to Services](image-2.png)
 
-Helm gets its own file — see [HELM.md](HELM.md).
+Helm gets its own file — see [HELM.md](HELM.md), which also covers
+[labels, selectors, and namespaces](HELM.md#labels-selectors-and-namespaces).
 
 ---
 
@@ -145,6 +147,7 @@ about what those two words mean, because the whole difference sits there.
 | You say | "run this process, here" | "I want 2 of these running" — somewhere |
 | Knows about | only itself | every node, every workload, what should exist |
 | If one dies | whatever was on it is gone | the work is rescheduled elsewhere |
+| Is virtual? | **no** — a real thing you can point at | **yes** — nothing to point at |
 
 A machine runs processes. It has no opinion about other machines and no memory
 of what it was supposed to be doing. Three Vagrant VMs are three strangers on a
@@ -154,6 +157,55 @@ A cluster is what you get when those machines share a **control plane**: a
 recorded desired state (etcd), an API in front of it (kube-apiserver), and
 controllers that continuously drive reality toward it. At that point the
 individual machines stop mattering — they become interchangeable capacity.
+
+### Is a cluster virtual?
+
+Yes — but in the sense of *abstract*, not *virtualized*. Two meanings of the
+word get tangled here and it is worth separating them:
+
+| Sense | Means | Is a cluster this? |
+|---|---|---|
+| **virtualized** | emulated hardware — a VM, a hypervisor | **no** |
+| **abstract** | a concept that exists only because software agrees it does | **yes** |
+
+There is no cluster process, no cluster machine, no cluster you can SSH into.
+What physically exists on your laptop is three Docker containers and the
+processes inside them. The "cluster" is the *agreement* between them: a shared
+datastore, one API in front of it, and controllers acting on what it says.
+
+Like a team. The people are real; the team is real too, but you cannot point at
+it — you point at people and at the coordination between them.
+
+**This applies to the objects inside it as well**, and the split surprises
+people:
+
+| Object | Actually a running thing? |
+|---|---|
+| Node | **yes** — a container here, a machine in production |
+| Pod | **yes** — real processes, real network namespace |
+| Deployment / ReplicaSet | no — rows in etcd. Nothing "runs" a Deployment |
+| Namespace | no — a name scope and nothing else |
+| Service | no — and this is the sharp one |
+
+The Service is the best demonstration. Yours:
+
+```console
+$ kubectl get svc,pods -n filmory -o wide
+service/backend   ClusterIP   10.96.186.82   80/TCP    app=backend
+
+pod/backend-...-79kbm   10.244.1.4   filmory-worker
+pod/backend-...-t2tkf   10.244.2.3   filmory-worker2
+```
+
+**No machine has the address 10.96.186.82. No process is listening on it.** It
+appears on no network interface anywhere in the cluster. It is a rule — written
+by kube-proxy into every node's packet filter — that rewrites traffic bound for
+that address to one of the two Pod IPs, which *are* real.
+
+The Pod IPs are backed by processes. The Service IP is backed by nothing but
+agreement. That is what "virtual" means here, and it is why deleting a Pod
+changes nothing about the Service: the rule is rewritten, the address never
+moves.
 
 ### The gap between them
 
@@ -459,3 +511,12 @@ behaves like the real thing.
 - Kind Tutorial: Kubernetes in Docker - Complete Beginner's Guide to Local K8s Clusters
 https://www.youtube.com/watch?v=N4kwKtdcDWA
 
+- Multi-node cluster config
+![alt text](image-6.png)
+
+- Port Mapping config
+![alt text](image-7.png)
+
+- commands 
+![alt text](image-4.png)
+![alt text](image-5.png)

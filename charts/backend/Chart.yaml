@@ -5,3 +5,13 @@ type: application
 
 version: 0.1.0
 appVersion: "0.1.1"
+
+# ── apiVersion: v2 — NOT a Kubernetes version ────────────────────────────────
+# This is the HELM CHART FORMAT version. It has nothing to do with the "v1" and
+# "apps/v1" in templates/ — two unrelated numbering systems that reuse the word.
+#
+#   v1   Helm 2 era. Dependencies lived in a separate requirements.yaml.
+#   v2   Helm 3+. Dependencies inline, "type:" field added.   ← use this
+#
+#   Chart.yaml    apiVersion: v2        → which Helm chart schema this is
+#   templates/*   apiVersion: apps/v1   → which Kubernetes API serves the object

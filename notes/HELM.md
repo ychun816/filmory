@@ -9,6 +9,7 @@ Kubernetes concepts this assumes are in [K8s_KIND.md](K8s_KIND.md).
 ## index
 
 - [Orientation](#orientation)
+- [Labels, selectors, and namespaces](#labels-selectors-and-namespaces)
 - [What a chart actually is](#what-a-chart-actually-is)
 - [Chart.yaml](#chartyaml)
 - [templates/ — the only part Kubernetes sees](#templates--the-only-part-kubernetes-sees)
@@ -33,6 +34,111 @@ already know. Everything below is templating over Deployment, Service, and
 Namespace.
 
 ![Helm packaging Kubernetes manifests into a chart and installing it as a release](image-3.png)
+
+---
+
+## Labels, selectors, and namespaces
+
+Three things that look related and are not. The short version:
+
+- a **namespace** is a *scope* — where an object lives
+- a **label** is a *tag* — put on an object
+- a **selector** is a *query* — run against labels
+
+Only the third one searches for anything.
+
+| Field | Appears on | Query? | Means |
+|---|---|---|---|
+| `metadata.namespace` | any object | no | which scope this object lives in |
+| `metadata.labels` | any object | no | tags attached **to** this object |
+| `spec.selector` | Service | **yes** | which Pods receive traffic |
+| `spec.selector.matchLabels` | Deployment, ReplicaSet, StatefulSet, DaemonSet, Job | **yes** | which Pods this controller **owns** |
+| `spec.template.metadata.labels` | Deployment | no | labels stamped onto the Pods it creates |
+
+### Why a Service says `selector` and a Deployment says `selector.matchLabels`
+
+Not a style inconsistency — an age difference. Service is one of the oldest
+objects in Kubernetes and its selector is a plain map, equality only:
+
+```yaml
+# Service — flat. "app equals backend", and nothing more expressive is possible.
+selector:
+  app: backend
+```
+
+Deployment came later and uses the standard `LabelSelector` type, which has two
+possible children:
+
+```yaml
+# Deployment — nested, because there is a second option
+selector:
+  matchLabels:            # equality, same as Service
+    app: backend
+  matchExpressions:       # and the part Service cannot do
+    - {key: tier, operator: In, values: [web, api]}
+```
+
+`matchLabels` is the *simple half* of a richer type. That is the whole reason
+for the extra level of nesting.
+
+### The pairing that must agree
+
+Inside one Deployment, the selector and the Pod template labels are two
+different fields that must describe the same thing:
+
+```yaml
+spec:
+  selector:
+    matchLabels:
+      app: backend        # "the Pods I own carry this"
+  template:
+    metadata:
+      labels:
+        app: backend      # "the Pods I create carry this"
+```
+
+If they disagree, the Deployment creates Pods it does not recognise as its own,
+then creates more, forever. The API server rejects the mismatch rather than
+allowing it. This field is also **immutable** — changing it means deleting and
+recreating the Deployment.
+
+### Namespaces do not select — they contain
+
+The distinction that catches people: **a selector never crosses a namespace.**
+
+```yaml
+metadata:
+  namespace: filmory      # not a query. A statement of address.
+spec:
+  selector:
+    app: backend          # searched ONLY within filmory
+```
+
+A Service in `filmory` cannot select Pods in `default`, no matter what labels
+they carry. Scope first, query second. That is also why the same chart can be
+installed twice into two namespaces without the two releases interfering — the
+labels are identical, but the searches never overlap.
+
+### Same label, two independent readers
+
+Nothing links a Deployment to a Service. They are two separate queries that
+happen to match the same label:
+
+```mermaid
+flowchart TB
+    DEP["Deployment<br/>selector.matchLabels: app=backend"]
+    SVC["Service<br/>selector: app=backend"]
+    P1["Pod<br/>labels: app=backend"]
+    P2["Pod<br/>labels: app=backend"]
+    DEP -->|"owns — keeps 2 alive"| P1
+    DEP -->|"owns"| P2
+    SVC -.->|"routes to — if READY"| P1
+    SVC -.->|"routes to"| P2
+```
+
+Delete the Service and the Pods keep running. Delete the Deployment and the
+Service resolves to an empty list and returns connection errors. Neither knows
+the other exists.
 
 ---
 

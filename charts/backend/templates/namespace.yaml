@@ -13,6 +13,7 @@ metadata:
 #
 # Core group holds: Namespace, Service, Pod, ConfigMap, Secret, PersistentVolume
 #
-# A Namespace runs no process and consumes no resources — it is a name scope
-# and nothing else. Objects inside it are addressed as:
+# A Namespace runs no process and consumes no resources
+# it is a name scope and nothing else. 
+# Objects inside it are addressed as:
 #   <name>.<namespace>.svc.cluster.local   →   backend.filmory.svc.cluster.local

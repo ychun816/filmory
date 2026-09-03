@@ -29,18 +29,22 @@ spec:
       containers:
         - name: backend
           image: filmory-backend:0.1.1
+          # 0.1.1 -> tag => also matches appVersion: "0.1.1"
           # IfNotPresent is essential with `kind load`: the image exists on the
           # node but NOT in any registry. Always would try to pull and fail.
           imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 8000
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
           
-          # Probes are why /health exists. Kubernetes calls it constantly.
+          securityContext:
+            allowPrivilegeEscalation: false         # setuid binaries gaining more privileges than the parent
+            readOnlyRootFilesystem: true            # writing anywhere in the container -> needs the /tmp emptyDir
+            capabilities:
+              drop: ["ALL"]                         # the ~14 Linux capabilities containers get by default
+  
+  
+  # Probes are why /health exists. Kubernetes calls it constantly.
       #     livenessProbe:        # failing = restart the container
       #       httpGet:
       #         path: /health
@@ -67,6 +71,12 @@ spec:
       #   - name: tmp
       #     emptyDir: {}
 
+
+
+
+
+
+### NOTES ### 
 # ── apiVersion: apps/v1 ──────────────────────────────────────────────────────
 # Kubernetes objects are served by API GROUPS. The format is "<group>/<version>",
 # except the original "core" group, which has no name and is written bare as "v1".
@@ -109,3 +119,19 @@ spec:
 # label for different purposes:
 #   Deployment  "these Pods are mine — keep 2 of them alive"
 #   Service     "these Pods get traffic — if they are ready"
+
+
+
+# -------- POD setting --------
+# runAsNonRoot: true
+# kubelet refuses to start the container if its user resolves to UID 0
+
+# runAsUser: 10001
+# run processes as this UID, overriding the image's USER
+# 1001 -> 
+
+# seccompProfile: RuntimeDefault
+# restrict which syscalls the process may make
+# Linux has ~350 syscalls; a web app needs a few dozen. 
+# RuntimeDefault -> applies the container runtime's allowlist, blocking the rest. Historically the default was Unconfined — no filtering at all.
+

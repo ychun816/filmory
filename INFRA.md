@@ -3,6 +3,8 @@
 ## index
 
 - [to do](#to-do)
+  - [The shape of the whole thing](#the-shape-of-the-whole-thing)
+  - [What each phase actually removes](#what-each-phase-actually-removes)
   - [Phase 0 — Local tooling](#phase-0--local-tooling)
   - [Phase 1 — Cluster · infra/kind-setup](#phase-1--cluster--infrakind-setup)
   - [Phase 2 — The payload · feat/backend-health](#phase-2--the-payload--featbackend-health)
@@ -39,6 +41,66 @@ means three weeks on Vault and Istio with nothing a human can look at.
 
 Rule for branches: *a branch holds commits you intend to merge.* Machine setup
 changes no files, so it gets no branch.
+
+### The shape of the whole thing
+
+Each phase produces one artifact the next phase consumes. Nothing here is
+optional-but-nice: skip a box and the one after it has nothing to stand on.
+
+```mermaid
+flowchart TB
+    P0["Phase 0 — mise<br/>pinned CLIs on your laptop<br/>✅ done"]
+    P1["Phase 1 — kind<br/>a 3-node cluster exists<br/>✅ running, PR not merged"]
+    P2["Phases 2–3 — FastAPI + Docker<br/>filmory-backend:0.1.1 on every node<br/>✅ done"]
+    P4A["Phase 4a — raw manifests<br/>2 Pods answering /health<br/>✅ done"]
+    P4B["Phase 4b — Helm<br/>the same objects, templated<br/>◀ you are here"]
+    P5["Phase 5 — ArgoCD<br/>the cluster pulls from git"]
+    P6["Phase 6 — GitHub Actions<br/>push code, the rest is automatic"]
+    P7["Phase 7+ — platform layers<br/>each one an ArgoCD Application"]
+
+    P0 -->|"kubectl, kind, helm"| P1
+    P1 -->|"somewhere to run things"| P2
+    P2 -->|"an image to deploy"| P4A
+    P4A -->|"objects that work"| P4B
+    P4B -->|"a chart to sync"| P5
+    P5 -->|"something to deploy into"| P6
+    P6 -->|"a pipeline to install through"| P7
+```
+
+**Why this order and not the tech table in the README:** the README lists the
+stack; this lists a *walking skeleton*. Every phase up to 5 is one thin slice
+running end to end. Working down the README instead means three weeks on Vault
+and Istio with nothing a human can look at.
+
+### What each phase actually removes
+
+The clearer way to read the plan: every phase deletes a manual step. Watch where
+the human sits.
+
+```mermaid
+flowchart LR
+    subgraph S4A["Phase 4a — where you are now"]
+        A1["you edit YAML"] --> A2["you run<br/>kubectl apply"] --> A3["cluster"]
+    end
+    subgraph S4B["Phase 4b — Helm"]
+        B1["you edit values"] --> B2["you run<br/>helm upgrade"] --> B3["cluster"]
+    end
+    subgraph S5["Phase 5 — GitOps"]
+        C1["you commit<br/>to the config repo"] --> C2["ArgoCD pulls<br/>and applies"] --> C3["cluster"]
+    end
+    subgraph S6["Phase 6 — CI"]
+        D1["you push code"] --> D2["CI builds the image<br/>and bumps the tag"] --> D3["ArgoCD pulls<br/>and applies"] --> D4["cluster"]
+    end
+```
+
+At 4a and 4b you are the deployment mechanism — the cluster changes because you
+typed a command at it. From Phase 5 the arrow reverses: **the cluster pulls**,
+and your only action is a commit. By Phase 6 you are back to writing Python and
+the infrastructure moves on its own.
+
+That reversal is the single most important idea in the plan. Helm does not
+deliver it — 4b still has you running `helm upgrade` by hand. Helm exists to
+give ArgoCD something worth syncing.
 
 
 ### Phase 0 — Local tooling

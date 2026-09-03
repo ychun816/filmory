@@ -1,0 +1,7 @@
+apiVersion: v2
+name: backend
+description: filmory backend — FastAPI service behind the /health probe
+type: application
+
+version: 0.1.0
+appVersion: "0.1.1"

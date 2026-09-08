@@ -520,3 +520,85 @@ https://www.youtube.com/watch?v=N4kwKtdcDWA
 - commands 
 ![alt text](image-4.png)
 ![alt text](image-5.png)
+
+---
+
+
+## extra notes (script example wiwth mongo setup)
+
+
+config map syntax
+https://www.youtube.com/watch?v=s_o8dwzRlu4&t=104s
+![alt text](image-8.png)
+
+ex: mongo.yaml 
+![alt text](image-9.png)
+![alt text](image-10.png)
+label selectors ->
+```yaml
+selectors
+  matchlabels:  
+    [custom name] : [app name]
+    app[->conventional name] : mongo[app name]
+```
+![alt text](image-11.png)
+
+service -> forward the request into the server pods
+```yaml
+spec:
+  selector:
+    app : mongo
+  ports:
+    - protocol: TCP
+      port: [service port]
+      targetPort: [continerPort of deployment]
+
+=> targetPort should be the same as containerPort
+```
+![alt text](image-12.png)
+![alt text](image-13.png)
+![alt text](image-14.png)
+
+envirment name , in `mongo.yaml`
+[A]
+```yaml
+spec:
+  env:
+  - name: MONGO_INITDB_ROOT_USERNAME
+    value: [(directly set here)username]
+```
+OR 
+[B] reference on `mongo-config.yaml` and `mongo-secret.yaml`
+```yaml
+spec:
+  env:
+  # username
+  - name: MONGO_INITDB_ROOT_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: mongo-secret  # yaml file name
+        key: mongo-user     # key inside yaml file 
+        # => value stored in another secret.yaml file 
+
+  # password 
+  - name: MONGO_INITDB_ROOT_PASSWORD
+      valueFrom:
+      secretKeyRef:
+        name: mongo-secret   # yaml file name
+        key: mongo-password  # key inside yaml file
+```
+=> in `mongo-secret.yaml`:
+```yaml
+metadata:
+  name: mongo-secret
+...
+data:
+  mongo-user: [user value encryped in base 64]
+  mongo-password: [user value encryped in base 64]
+```
+
+
+webapp.yaml
+![alt text](image-17.png)
+![alt text](image-15.png)
+![alt text](image-16.png)
